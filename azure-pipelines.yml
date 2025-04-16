@@ -1,0 +1,67 @@
+trigger: none
+stages:
+  - stage: "CIBuild"
+    displayName: "CIStage"
+    jobs:
+     - job: "job01"
+       displayName: CIJob
+       pool:
+        vmimage: 'windows-2019'
+       steps:
+        - task: CopyFiles@2
+          inputs:
+            SourceFolder: 'VM-Build'
+            Contents: '**'
+            TargetFolder: '$(build.artifactstagingdirectory)'
+        - task: PublishPipelineArtifact@1
+          inputs:
+            targetPath: '$(build.artifactstagingdirectory)'
+            artifact: 'demo-03'
+            publishLocation: 'pipeline'
+  - stage: "CDdeployment"
+    displayName: "CD"
+    jobs:
+     - deployment: 
+       pool:
+        vmimage: 'windows-2019'
+       environment: 'Dev-env'
+       strategy:
+        runOnce:
+         deploy:
+             steps:
+             - task: TerraformInstaller@1
+               inputs:
+                terraformVersion: 'latest'
+             - task: TerraformTaskV4@4
+               inputs:
+                 provider: 'azurerm'
+                 command: 'init'
+                 workingDirectory: '$(Agent.BuildDirectory)/demo-03'
+                 backendServiceArm: 'free trial subscription(1)(eb488af1-03a2-4e2a-97e0-3d55d0eccaab)'
+                 backendAzureRmResourceGroupName: 'RG-01'
+                 backendAzureRmStorageAccountName: 'storagesdemo'
+                 backendAzureRmContainerName: 'container123'
+                 backendAzureRmKey: '''tf/terraform.tfstate'''
+             - task: TerraformTaskV4@4
+               inputs:
+                 provider: 'azurerm'
+                 command: 'validate'
+                 workingDirectory: '$(Agent.BuildDirectory)/demo-03'
+             - task: TerraformTaskV4@4
+               inputs:
+                 provider: 'azurerm'
+                 command: 'plan'
+                 workingDirectory: '$(Agent.BuildDirectory)/demo-03'
+                 environmentServiceNameAzureRM: 'free trial subscription(4)(eb488af1-03a2-4e2a-97e0-3d55d0eccaab)'
+             - task: TerraformTaskV4@4
+               inputs:
+                 provider: 'azurerm'
+                 command: 'apply'
+                 workingDirectory: '$(Agent.BuildDirectory)/demo-03'
+                 environmentServiceNameAzureRM: 'free trial subscription(5)(eb488af1-03a2-4e2a-97e0-3d55d0eccaab)'
+
+
+
+        
+      
+           
